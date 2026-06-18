@@ -1,4 +1,4 @@
-# Workshop-Warwick-Location
+# Workshop-2026-Warwick
 
 ## Welcome to the 2026 Warwick Workshop Repository!
 
