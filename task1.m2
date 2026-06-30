@@ -25,13 +25,22 @@ krawczykTest = (F,rho,p,r) ->  (
 
 )
 
+
+
+tangentNormalFrame = (FJ,m,n) -> (
+--    J := evaluateJacobian(F, p0);
+--    (m, n) := (numrows J, numcols J);
+    M := (SVD FJ)#2;
+    (M_{0..m-1}, M_{m..n-1})
+    )
+
+
 krawczykSurfaceOperator = (F,p,Rt,Rn) -> (
     FJ:=evaluateJacobian(F, transpose p);
     m:=numrows FJ;
     n:=numcols FJ;
-    (s,U,V):=SVD(FJ);
-    Vn:=V_{0..m-1};
-    Vt:=V_{m..n-1};
+    (Vn, Vt):=tangentNormalFrame(FJ, m, n);
+    
     Bn:=transpose matrix{apply(m, i -> interval(-1,1))};
     Bt:=transpose matrix{apply(n-m, i -> interval(-1,1))}; 
 
@@ -40,10 +49,18 @@ krawczykSurfaceOperator = (F,p,Rt,Rn) -> (
 
     Y:= inverse(evaluateJacobian(F, transpose p)* Vn);
     Id :=id_(RR^m);
-    ans:= -Y*g1+ (Id - Y*g2)*Rn*Bn
-    
-)
+    K := -Y*g1+ (Id - Y*g2)*Rn*Bn;
+    (K, maxNorm K)
+    )
 
+maxNorm = I -> (
+    max apply(flatten entries I, i -> right abs i)
+    )
+
+krawczykSurfaceTest = (F,p,Rt,Rn,rho) -> (
+    (K, normK) := krawczykSurfaceOperator(F, p, Rt, Rn);
+    normK < Rn*rho
+    )
 
 end
 
@@ -51,7 +68,6 @@ restart
 load("task1.m2")
 declareVariable \ {x, y, z}
 varMatrix = gateMatrix{{x,y}}
-n=numcols varMatrix
 
 rho=7/8
 r=0.1
@@ -64,18 +80,21 @@ ans1=krawczykTest(F, rho,p,r)
 Rt = .1
 Rn = .1
 
+
 varMatrix = gateMatrix{{x,y}}
 j = gateMatrix{{x^2+y^2-1}}
 J = gateSystem(varMatrix, j)
 p1= matrix {{0_RR},{1_RR}}
 K = krawczykSurfaceOperator(J,p1,Rt,Rn)
+krawczykSurfaceTest(J, p1, Rt, Rn, 7/8)
 
 varMatrix = gateMatrix{{x,y,z}}
 h = gateMatrix{{x^2+y^2-1}, {z}}
 H = gateSystem(varMatrix, h)
 p2= matrix {{0_RR},{1_RR}, {0}}
-p2= matrix {{1/sqrt(3)},{1/sqrt(3)}, {1/sqrt(3)}}
+p2= matrix {{1/sqrt(2)},{1/sqrt(2)}, {0}}
 K = krawczykSurfaceOperator(H,p2,Rt,Rn)
+krawczykSurfaceTest(H, p2, .05, Rn, 7/8)
 
 
 varMatrix = gateMatrix{{x,y,z}}
@@ -83,25 +102,4 @@ g = gateMatrix{{x^2+y^2+z^2-1}}
 G = gateSystem(varMatrix, g)
 p2= matrix {{0_RR},{0_RR}, {1}}
 K = krawczykSurfaceOperator(G,p2,Rt,Rn)
-
-
-JJ=evaluateJacobian(J, transpose p1)
-(s,U,V)=SVD(JJ)
-rn=V_{0..m-1}
-rt=V_{m..n-1}
-
-varMatrix = gateMatrix{{x,y}}
-Rt=0.1
-Rn=0.1
-Bn=matrix{apply(m, i -> interval(-1,1))}
-
-K = krawczykSurfaceOperator(H,p2,Rt,Rn)
-
-krawczykSurfaceTest = (J,p1,Rt, Rn) -> (
-    
-    K = krawczykSurfaceOperator(J,p1,Rt,Rn)
-    fK = flatten entries K
-    fKO = flatten entries(Rn*rho);
-    all apply(numrows Bn, i -> isSubset(fK#i, fKO#i))
-)
-    
+krawczykSurfaceTest(G, p2, .05, Rn, 7/8)
