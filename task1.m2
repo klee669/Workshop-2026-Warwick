@@ -28,8 +28,6 @@ krawczykTest = (F,rho,p,r) ->  (
 
 
 tangentNormalFrame = (FJ,m,n) -> (
---    J := evaluateJacobian(F, p0);
---    (m, n) := (numrows J, numcols J);
     M := (SVD FJ)#2;
     (M_{0..m-1}, M_{m..n-1})
     )
