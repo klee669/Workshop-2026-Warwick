@@ -127,7 +127,7 @@ refinePoint = method(Options => {
     })
 refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
     p = newtonRefinement(F, p, o.epsilon);
-    (Rt, Rn) = growRadius(F, p, Rt, Rn, Vn, Vt, o.rho, o.growthFactor);
+    (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor);
     (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor);
     
     (p, Rt, Rn)
