@@ -33,11 +33,11 @@ tangentNormalFrame = (FJ,m,n) -> (
     )
 
 
-krawczykSurfaceOperator = (F,p,Rt,Rn) -> (
+krawczykSurfaceOperator = (F,p,Rt,Rn, Vn, Vt) -> (
     FJ:=evaluateJacobian(F, transpose p);
     m:=numrows FJ;
     n:=numcols FJ;
-    (Vn, Vt):=tangentNormalFrame(FJ, m, n);
+    -- (Vn, Vt):=tangentNormalFrame(FJ, m, n);
     
     Bn:=transpose matrix{apply(m, i -> interval(-1,1))};
     Bt:=transpose matrix{apply(n-m, i -> interval(-1,1))}; 
@@ -55,8 +55,8 @@ maxNorm = I -> (
     max apply(flatten entries I, i -> right abs i)
     )
 
-krawczykSurfaceTest = (F,p,Rt,Rn,rho) -> (
-    (K, normK) := krawczykSurfaceOperator(F, p, Rt, Rn);
+krawczykSurfaceTest = (F,p,Rt,Rn,rho, Vn, Vt) -> (
+    (K, normK) := krawczykSurfaceOperator(F, p, Rt, Rn, Vn, Vt);
     normK < Rn*rho
     )
 
@@ -89,11 +89,11 @@ newtonIterate = (F, JF, p0, Vn) -> (
     pt
     )
 
-newtonRefinement = (F,p,episilon) -> (
+newtonRefinement = (F,p,episilon, Vn) -> (
 --    episilon := 10^-5;
     JF := evaluateJacobian(F, transpose p);
     (m,n) := (numRows JF, numColumns JF);
-    (Vn, Vt) = tangentNormalFrame(JF, m, n);
+    -- (Vn, Vt) = tangentNormalFrame(JF, m, n);
     while norm evaluate(F, transpose p) > episilon do (
         p = newtonIterate(F, JF, p, Vn);
         );
@@ -101,8 +101,8 @@ newtonRefinement = (F,p,episilon) -> (
     )
 
 
-growRadius = (F,p,Rt,Rn,rho, increasingFactor) -> (
-    while krawczykSurfaceTest(F, p, Rt, Rn, 7/8) do (
+growRadius = (F,p,Rt,Rn,rho, increasingFactor, Vn, Vt) -> (
+    while krawczykSurfaceTest(F, p, Rt, Rn, 7/8, Vn, Vt) do (
         Rt = increasingFactor*Rt;
         Rn = increasingFactor*Rn;
     );
@@ -110,8 +110,8 @@ growRadius = (F,p,Rt,Rn,rho, increasingFactor) -> (
 )
 
 
-decreaseRadius = (F,p,Rt,Rn,rho, decreasedFactor) -> (
-    while not krawczykSurfaceTest(F,p,Rt,Rn,rho) do (
+decreaseRadius = (F,p,Rt,Rn,rho, decreasedFactor, Vn, Vt) -> (
+    while not krawczykSurfaceTest(F,p,Rt,Rn,rho, Vn, Vt) do (
         Rt = Rt*decreasedFactor;
         Rn = Rn*decreasedFactor;
     );
@@ -126,11 +126,17 @@ refinePoint = method(Options => {
         rho => 7/8,
     })
 refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
-    p = newtonRefinement(F, p, o.epsilon);
-    (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor);
-    (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor);
+    FJ := evaluateJacobian(F, transpose p);
+    (m,n) := (numRows FJ, numColumns FJ);
+    (Vn, Vt):=tangentNormalFrame(FJ, m, n);
+    p = newtonRefinement(F, p, o.epsilon, Vn);
+    print p;
+    FJ = evaluateJacobian(F, transpose p);
+    (Vn, Vt)=tangentNormalFrame(FJ, m, n);
+    (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor, Vn, Vt);
+    (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor, Vn, Vt);
     
-    (p, Rt, Rn)
+    (p, Rt, Rn, Vt)
     )
 refinePoint(GateSystem, Point, Number, Number) := o -> (F, p, Rt, Rn) -> refinePoint(F, transpose matrix p, Rt, Rn)
 
