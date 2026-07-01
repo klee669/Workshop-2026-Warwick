@@ -80,6 +80,60 @@ krawczykSurfacePatchTest = (F,p,Rt,Rn,rho) -> (
     (normK < Rn*rho, Knormal, Kambient, normK)
     )
 
+
+
+
+newtonIterate = (F, JF, p0, Vn) -> (
+    Y := inverse (JF*Vn);
+    pt := p0 -  Vn*Y*transpose(evaluate(F, transpose p0));
+    pt
+    )
+
+newtonRefinement = (F,p,episilon) -> (
+--    episilon := 10^-5;
+    JF := evaluateJacobian(F, transpose p);
+    (m,n) := (numRows JF, numColumns JF);
+    (Vn, Vt) = tangentNormalFrame(JF, m, n);
+    while norm evaluate(F, transpose p) > episilon do (
+        p = newtonIterate(F, JF, p, Vn);
+        );
+    p
+    )
+
+
+growRadius = (F,p,Rt,Rn,rho, increasingFactor) -> (
+    while krawczykSurfaceTest(F, p, Rt, Rn, 7/8) do (
+        Rt = increasingFactor*Rt;
+        Rn = increasingFactor*Rn;
+    );
+    (Rt, Rn)
+)
+
+
+decreaseRadius = (F,p,Rt,Rn,rho, decreasedFactor) -> (
+    while not krawczykSurfaceTest(F,p,Rt,Rn,rho) do (
+        Rt = Rt*decreasedFactor;
+        Rn = Rn*decreasedFactor;
+    );
+    (Rt,Rn)
+)
+
+
+refinePoint = method(Options => {
+        epsilon => 10^-5,
+        growthFactor => 1.25,
+        decreaseFactor => .5,
+        rho => 7/8,
+    })
+refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
+    p = newtonRefinement(F, p, o.epsilon);
+    (Rt, Rn) = growRadius(F, p, Rt, Rn, Vn, Vt, o.rho, o.growthFactor);
+    (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor);
+    
+    (p, Rt, Rn)
+    )
+refinePoint(GateSystem, Point, Number, Number) := o -> (F, p, Rt, Rn) -> refinePoint(F, transpose matrix p, Rt, Rn)
+
 end
 
 restart
@@ -102,7 +156,9 @@ Rn = .1
 varMatrix = gateMatrix{{x,y}}
 j = gateMatrix{{x^2+y^2-1}}
 J = gateSystem(varMatrix, j)
-p1= matrix {{0_RR},{1_RR}}
+p1= matrix {{0_RR},{2_RR}}
+refinePoint(J,p1,Rt,Rn)
+
 K = krawczykSurfaceOperator(J,p1,Rt,Rn)
 krawczykSurfaceTest(J, p1, Rt, Rn, 7/8)
 
@@ -110,9 +166,10 @@ varMatrix = gateMatrix{{x,y,z}}
 h = gateMatrix{{x^2+y^2-1}, {z}}
 H = gateSystem(varMatrix, h)
 p2= matrix {{0_RR},{1_RR}, {0}}
-p2= matrix {{1/sqrt(2)},{1/sqrt(2)}, {0}}
+p2= matrix {{1/sqrt(2)},{1/sqrt(2)+1}, {0}}
 K = krawczykSurfaceOperator(H,p2,Rt,Rn)
 krawczykSurfaceTest(H, p2, .05, Rn, 7/8)
+refinePoint(H,p2,Rt,Rn)
 
 
 varMatrix = gateMatrix{{x,y,z}}
