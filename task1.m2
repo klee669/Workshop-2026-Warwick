@@ -60,6 +60,26 @@ krawczykSurfaceTest = (F,p,Rt,Rn,rho) -> (
     normK < Rn*rho
     )
 
+krawczykSurfacePatch = (F,p,Rt,Rn) -> (
+    FJ:=evaluateJacobian(F, transpose p);
+    m:=numrows FJ;
+    n:=numcols FJ;
+    (Vn, Vt):=tangentNormalFrame(FJ, m, n);
+
+    Bt:=transpose matrix{apply(n-m, i -> interval(-1,1))};
+    tangentPart := Rt*Vt*Bt;
+
+    (Knormal, normK) := krawczykSurfaceOperator(F, p, Rt, Rn);
+    Kambient := p + tangentPart + Vn*Knormal;
+
+    (Knormal, Kambient, normK)
+    )
+
+krawczykSurfacePatchTest = (F,p,Rt,Rn,rho) -> (
+    (Knormal, Kambient, normK) := krawczykSurfacePatch(F, p, Rt, Rn);
+    (normK < Rn*rho, Knormal, Kambient, normK)
+    )
+
 end
 
 restart
