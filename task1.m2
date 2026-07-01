@@ -28,7 +28,7 @@ krawczykTest = (F,rho,p,r) ->  (
 
 
 tangentNormalFrame = (FJ,m,n) -> (
-    M := (SVD FJ)#2;
+    M := transpose((SVD FJ)#2);
     (M_{0..m-1}, M_{m..n-1})
     )
 
