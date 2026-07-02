@@ -130,15 +130,26 @@ refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
     (m,n) := (numRows FJ, numColumns FJ);
     (Vn, Vt):=tangentNormalFrame(FJ, m, n);
     p = newtonRefinement(F, p, o.epsilon, Vn);
-    print p;
     FJ = evaluateJacobian(F, transpose p);
     (Vn, Vt)=tangentNormalFrame(FJ, m, n);
     (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor, Vn, Vt);
     (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor, Vn, Vt);
     
-    (p, Rt, Rn, Vt)
+    (p, (Vn, Vt), (Rn, Rt))
     )
 refinePoint(GateSystem, Point, Number, Number) := o -> (F, p, Rt, Rn) -> refinePoint(F, transpose matrix p, Rt, Rn)
+
+
+CertifiedBox := new Type of MutableHashTable
+
+surfaceTile = (center, frame, r) -> new CertifiedBox from {
+    "center" => center, -- a column matrix
+    "frame" => frame, -- a Sequence of (Vn, Vt)
+    "radii" => r, -- a Sequence of (Rn, Rt)
+    "dimData" => (numcols frame#1, numrows center) -- dims of (tangent space, ambient space)
+    }
+
+
 
 end
 
@@ -163,7 +174,8 @@ varMatrix = gateMatrix{{x,y}}
 j = gateMatrix{{x^2+y^2-1}}
 J = gateSystem(varMatrix, j)
 p1= matrix {{0_RR},{2_RR}}
-refinePoint(J,p1,Rt,Rn)
+surfaceTile refinePoint(J,p1,Rt,Rn)
+peek oo
 
 K = krawczykSurfaceOperator(J,p1,Rt,Rn)
 krawczykSurfaceTest(J, p1, Rt, Rn, 7/8)
