@@ -69,7 +69,7 @@ krawczykSurfacePatch = (F,p,Rt,Rn) -> (
     Bt:=transpose matrix{apply(n-m, i -> interval(-1,1))};
     tangentPart := Rt*Vt*Bt;
 
-    (Knormal, normK) := krawczykSurfaceOperator(F, p, Rt, Rn);
+    (Knormal, normK) := krawczykSurfaceOperator(F, p, Rt, Rn, Vn, Vt);
     Kambient := p + tangentPart + Vn*Knormal;
 
     (Knormal, Kambient, normK)
@@ -101,19 +101,21 @@ newtonRefinement = (F,p,episilon, Vn) -> (
     )
 
 
-growRadius = (F,p,Rt,Rn,rho, increasingFactor, Vn, Vt) -> (
+growRadius = (F,p,Rt,Rn,rho, increasingFactor, Vn, Vt, maxRadius) -> (
     while krawczykSurfaceTest(F, p, Rt, Rn, 7/8, Vn, Vt) do (
         Rt = increasingFactor*Rt;
         Rn = increasingFactor*Rn;
+        if max(Rt, Rn) > maxRadius then error "radius becomes too large";
     );
     (Rt, Rn)
 )
 
 
-decreaseRadius = (F,p,Rt,Rn,rho, decreasedFactor, Vn, Vt) -> (
+decreaseRadius = (F,p,Rt,Rn,rho, decreasedFactor, Vn, Vt, minRadius) -> (
     while not krawczykSurfaceTest(F,p,Rt,Rn,rho, Vn, Vt) do (
         Rt = Rt*decreasedFactor;
-        Rn = Rn*decreasedFactor;
+--        Rn = Rn*decreasedFactor;
+        if min(Rt, Rn) < minRadius then error "radius becomes too small";
     );
     (Rt,Rn)
 )
@@ -124,6 +126,8 @@ refinePoint = method(Options => {
         growthFactor => 1.25,
         decreaseFactor => .5,
         rho => 7/8,
+        maxRadius => .5,
+        minRadius => 10^-10,
     })
 refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
     FJ := evaluateJacobian(F, transpose p);
@@ -132,8 +136,8 @@ refinePoint(GateSystem, Matrix, Number, Number) := o -> (F, p, Rt, Rn) -> (
     p = newtonRefinement(F, p, o.epsilon, Vn);
     FJ = evaluateJacobian(F, transpose p);
     (Vn, Vt)=tangentNormalFrame(FJ, m, n);
-    (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor, Vn, Vt);
-    (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor, Vn, Vt);
+    (Rt, Rn) = decreaseRadius(F, p, Rt, Rn, o.rho, o.decreaseFactor, Vn, Vt, o.minRadius);
+    (Rt, Rn) = growRadius(F, p, Rt, Rn, o.rho, o.growthFactor, Vn, Vt, o.maxRadius);
     
     (p, (Vn, Vt), (Rn, Rt))
     )
@@ -194,5 +198,9 @@ varMatrix = gateMatrix{{x,y,z}}
 g = gateMatrix{{x^2+y^2+z^2-1}}
 G = gateSystem(varMatrix, g)
 p2= matrix {{0_RR},{0_RR}, {1}}
-K = krawczykSurfaceOperator(G,p2,Rt,Rn)
-krawczykSurfaceTest(G, p2, .05, Rn, 7/8)
+p2= matrix {{1/sqrt(3)},{1/sqrt(3)}, {1/sqrt(3)}}
+refinePoint(G, p2,.1,.1)
+JG = evaluateJacobian(G, transpose p2)
+(Vn, Vt) = tangentNormalFrame(JG, 1,3)
+K = krawczykSurfaceOperator(G,p2,.01,.1,Vn,Vt)
+krawczykSurfaceTest(G,p2,.01,.1,7/8,Vn,Vt)
